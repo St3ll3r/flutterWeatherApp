@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/consts.dart';
+import 'package:flutter_application_1/sidebar.dart';
 import 'package:intl/intl.dart';
 import 'package:weather/weather.dart';
+import 'package:provider/provider.dart';
+
+import 'notifier.dart';
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  final String cityName;
+
+  const MyHomePage({super.key, required this.cityName});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -18,17 +24,69 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _wf.currentWeatherByCityName("Miami").then((w) {
+    _fetchWeather();
+  }
+
+  void _fetchWeather() {
+    _wf.currentWeatherByCityName(widget.cityName).then((w) {
       setState(() {
         _weather = w;
       });
+    }).catchError((error) {
+      // Show error dialog if weather data fetching fails
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: const Text('Failed to fetch weather data.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _buildUI(),
+      appBar: AppBar(
+        title: Text(
+          ' ${widget.cityName}',
+          style:
+              const TextStyle(color: Colors.white), // Set text color to white
+        ),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF08243C), // AppBar color
+        iconTheme: const IconThemeData(
+            color: Colors.white), // Set hamburger icon color
+        actionsIconTheme:
+            const IconThemeData(color: Colors.white), // Set action icon color
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bookmark_add),
+            onPressed: () {
+              Provider.of<SavedCitiesNotifier>(context, listen: false)
+                  .saveCity(widget.cityName);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('City saved!')),
+              );
+            },
+          ),
+        ],
+      ),
+      drawer: const Sidebar(),
+      body: Container(
+        color: Colors.blue, // Fixed blue background for body
+        child: _buildUI(),
+      ),
     );
   }
 
@@ -46,112 +104,156 @@ class _MyHomePageState extends State<MyHomePage> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _locationHeader(),
           SizedBox(
-            height: MediaQuery.sizeOf(context).height * 0.20,
+            height: MediaQuery.sizeOf(context).height * 0.01,
           ),
           _currentTemp(),
           SizedBox(
-            height: MediaQuery.sizeOf(context).height * 0.02,
+            height: MediaQuery.sizeOf(context).height * 0.1,
           ),
-          _weatherIcon(),
+          _simpleBox(), // Add the simple box here
           SizedBox(
-            height: MediaQuery.sizeOf(context).height * 0.02,
-          ),
-          _dateTimeInfo(),
-          SizedBox(
-            height: MediaQuery.sizeOf(context).height * 0.05,
+            height: MediaQuery.sizeOf(context).height * 0.03,
           ),
           _extraInfo(),
+          SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.001,
+          ),
         ],
       ),
     );
   }
 
-  Widget _locationHeader() {
-    return Text(_weather?.areaName ?? "",
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w500,
-        ));
-  }
-
-  Widget _dateTimeInfo() {
-    DateTime now = _weather!.date!;
-    return Column(
-      children: [
-        Text(
-          DateFormat("h:mm a").format(now),
-          style: const TextStyle(
-            fontSize: 35,
-          ),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.max,
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              DateFormat("EEEE").format(now),
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              "  ${DateFormat("d.m.y").format(now)}",
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        )
-      ],
-    );
-  }
-
-  Widget _weatherIcon() {
-    return Column(
-      mainAxisSize: MainAxisSize.max,
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          height: MediaQuery.sizeOf(context).height * 0.20,
-          decoration: BoxDecoration(
-              image: DecorationImage(
-                  image: NetworkImage(
-                      "http://openweathermap.org/img/wn/${_weather?.weatherIcon}@4x.png"))),
-        ),
-      ],
-    );
-  }
-
   Widget _currentTemp() {
-    return Column(
-      mainAxisSize:
-          MainAxisSize.min, // Keeps the column only as large as its content
-      children: [
-        // Existing Temperature Text
-        Text(
-          "${_weather?.temperature?.celsius?.toStringAsFixed(0)}° C",
-          style: const TextStyle(
-            fontSize: 18.0, // Set font size for temperature text
-            color: Colors.black87, // Optional: Set text color
+    return Container(
+      padding: const EdgeInsets.all(16.0), // Add padding inside the box
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2), // Semi-transparent background
+        borderRadius: BorderRadius.circular(20.0), // Rounded corners
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2), // Shadow color
+            offset: const Offset(0, 5), // Shadow position
           ),
-        ),
-        const SizedBox(
-            height: 8.0), // Adds some space between temperature and "Hello"
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            "${_weather?.temperature?.celsius?.toStringAsFixed(0)}° C",
+            style: const TextStyle(
+              fontSize: 48.0,
+              color: Colors.white, // White text for contrast
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8.0),
+          Text(
+            "${_weather?.weatherDescription ?? ''}",
+            style: const TextStyle(
+              fontSize: 20.0,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        // New "Hello" Text Below
-        Text(
-          "${_weather?.weatherDescription}",
-          style: const TextStyle(
-            fontSize: 24.0,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+  Widget _simpleBox() {
+    return Container(
+      height:
+          MediaQuery.sizeOf(context).height * 0.3, // Adjust height for content
+      padding: const EdgeInsets.all(16.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2), // Semi-transparent background
+        borderRadius: BorderRadius.circular(20.0), // Rounded corners
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10.0,
+            offset: const Offset(0, 5), // Shadow position
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start, // Align labels to the top-left
+        children: [
+          Text(
+            "${widget.cityName} Today:", // Dynamic city name
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 48.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Spacer(), // Add spacing between title and content
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_weather?.date != null) ...[
+                const Text(
+                  "Date of Observation:",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  DateFormat("EEEE, MMMM d, y - hh:mm a")
+                      .format(_weather!.date!),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.0,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8.0),
+              if (_weather?.cloudiness != null) ...[
+                const Text(
+                  "Level of Cloudiness (0-9 Okta):",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  "${_weather!.cloudiness!.toStringAsFixed(1)} Okta",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.0,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8.0),
+              if (_weather?.pressure != null) ...[
+                const Text(
+                  "Pressure (Pascal):",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  "${_weather!.pressure!.toStringAsFixed(1)} Pa",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.0,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -160,7 +262,7 @@ class _MyHomePageState extends State<MyHomePage> {
       height: MediaQuery.sizeOf(context).height * 0.15,
       width: MediaQuery.sizeOf(context).width * 0.80,
       decoration: BoxDecoration(
-        color: Colors.deepPurpleAccent,
+        color: Colors.lightBlueAccent,
         borderRadius: BorderRadius.circular(20),
       ),
       padding: const EdgeInsets.all(8.0),
@@ -179,12 +281,27 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text("Feels Like:",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 24),
-                    "${_weather?.tempFeelsLike?.celsius?.toStringAsFixed(0)}° C"),
+                const Text(
+                  "Feels Like:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Consumer<TemperatureUnitNotifier>(
+                  builder: (context, notifier, child) {
+                    final feelsLikeTemp =
+                        notifier.unit == TemperatureUnit.celsius
+                            ? _weather?.tempFeelsLike?.celsius
+                            : _weather?.tempFeelsLike?.fahrenheit;
+
+                    final unitLabel =
+                        notifier.unit == TemperatureUnit.celsius ? "C" : "F";
+
+                    return Text(
+                      "${feelsLikeTemp?.toStringAsFixed(0)}° $unitLabel",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 24),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -199,15 +316,33 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text("Visibility:",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 24),
-                    "${(_weather?.visibility ?? 0) / 1000} KM"),
+                const Text(
+                  "Visibility:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Consumer<VisibilityUnitNotifier>(
+                  builder: (context, notifier, child) {
+                    final visibilityInKm = (_weather?.visibility ?? 0) / 1000;
+                    final visibility =
+                        notifier.unit == VisibilityUnit.kilometers
+                            ? visibilityInKm
+                            : visibilityInKm * 0.621371; // Convert to miles
+
+                    final unitLabel = notifier.unit == VisibilityUnit.kilometers
+                        ? "KM"
+                        : "MI";
+
+                    return Text(
+                      "${visibility.toStringAsFixed(2)} $unitLabel",
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 24),
+                    );
+                  },
+                ),
               ],
             ),
           ),
+
           // Box 3
           Container(
             padding: const EdgeInsets.all(8.0),

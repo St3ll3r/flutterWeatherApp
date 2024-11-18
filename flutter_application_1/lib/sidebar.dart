@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/notifier.dart'; // Import your notifier
+import 'package:flutter_application_1/notifier.dart'; 
 import 'package:provider/provider.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
